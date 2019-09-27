@@ -109,7 +109,11 @@ def görüntü():
             yükleniyorsayacı.start()
             yükleme.set(0)
             ctime1,ctime2 = time.localtime().tm_min , time.localtime().tm_sec
-            img = Image.open(urllib.request.urlopen(url))
+            try:
+                img = Image.open(urllib.request.urlopen(url))
+            except:
+                messagebox.showerror("Bağlantı Hatası", "Bağlantı hatası oluştu.\n IP adresinizi doğru girdiğinize ve internete bağlı olduğunuza emin olun.\nProgram bu mesajdan sonra kapatılacaktır.")
+                kapat()
             yükleme.set(15)
             width, height = img.size
             print(width,height)
@@ -375,7 +379,7 @@ def sound_button():
         scaler.set(eskises * 100)
         ismuted = False
 def yardım_menusu():
-    messagebox.showinfo(title="Yardım",message="yardım :)")
+    messagebox.showinfo(title="Yardım",message="Kullanım:\n1- Telefonunuza IP Webcam adlı uygulamayı kurun\n2- Bilgisayar ile aynı bağlantıda olduğunuza emin olduktan sonra kamerayı açın ve IP adresinizi öğrenin\n3- Telefonunuzu kitabın bir sayfasına yerleştirin. (Önemli, çünkü kodun hızlı çalışması için direk başlatıyorum. Bu problemin üzerinde çalışıyorum\n4- Kodu çalıştırıp IP adresinizi girin.\n5- Belli bir süre sonra .mp3 uzantılı dosya belirecektir, tıklayıp oynatma tuşuna basın. (Bunun da üzerinde çalışıyorum.)\n6- Bu işlemlerden sonra kod kendisi foto çekip kendisi ses dosyaları arasında geçiş sağlayacaktır.\n7- Şu anlık sayfaları kendiniz çevirmeli ve telefonu kendiniz oynatmalısınız. Bu sıkıntı arkadaşlarım arduino kodunu yazınca düzelecektir.")
 def hakkımızda():
     messagebox.showinfo(title="Hakkımızda",message="Selçuklu Fen Lisesi Tulpar Ekibi tarafından yapılmıştır. \n İletişim için : \n Tulpar Ekibi = tulparrobotik@gmail.com \n Arızalar için = efemantaroglu@gmail.com")
 def ses_duzeyi(seviye):
