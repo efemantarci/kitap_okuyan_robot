@@ -3,6 +3,7 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter import filedialog
 from threading import Thread
+import threading
 import os
 import time
 import glob as gb
@@ -47,6 +48,8 @@ ipadresi = None
 v = "Girilmedi"
 baslangicmı = True
 
+baslangicsayfasi = 0
+
 def baslangic_sayac():
     x = 0
     global baslangicmı
@@ -84,7 +87,10 @@ def görüntü():
             image = cv2.medianBlur(image,9)
             ##retval, resim = cv2.threshold(resim, 150, 255, cv2.THRESH_BINARY)
             print("resim alındı")
-            text = pytesseract.image_to_string(image,lang="TUR")
+            try:
+                text = pytesseract.image_to_string(image,lang="TUR")
+            except:
+                messagebox.showerror("Text Hatası","Yazı bulunamadı. Kamerayı doğru tuttuğunuza emin olun")
             text = text.lower()
             try:
                 sayfa = re.findall('\d+',text)
@@ -94,8 +100,11 @@ def görüntü():
                 sayfanum = "Dayı"
             print(text)
             w["text"] = text
-            tts = gTTS(text = text, lang = "tr")
-            tts.save('sesler/sayfa{s}.mp3'.format(s = sayfanum))
+            try:
+                tts = gTTS(text = text, lang = "tr")
+                tts.save('sesler/sayfa{s}.mp3'.format(s = sayfanum))
+            except:
+                messagebox.showerror("Ses Hatası","Çektiğiniz fotoğrafta metin olduğundan emin olun.")
             btime1,btime2 = time.localtime().tm_min , time.localtime().tm_sec
             if ctime1 == btime1:
                 saniye = btime2-ctime2
@@ -103,6 +112,10 @@ def görüntü():
                 saniye = (60-ctime2) + btime2
             print("Döngü " + str(saniye) + " saniye sürdü")
             print("Döngü tamamlandı 5 saniye bekleniyor")
+            if(sayfanum // 2 == 0):
+                print("Kamera sağa")
+            else:
+                print("Kamera sola")
             time.sleep(5)
         else:
             yükleniyorsayacı = Thread(target=baslangic_sayac)
@@ -133,19 +146,26 @@ def görüntü():
             ##retval, resim = cv2.threshold(resim, 150, 255, cv2.THRESH_BINARY)
             print("resim alındı")
             yükleme.set(50)
-            text = pytesseract.image_to_string(image,lang="TUR")
+            try:
+                text = pytesseract.image_to_string(image,lang="TUR")
+            except:
+                messagebox.showerror("Text Hatası","Yazı bulunamadı. Kamerayı doğru tuttuğunuza emin olun")
             yükleme.set(75)
             text = text.lower()
             try:
                 sayfa = re.findall('\d+',text)
                 sayfanum = sayfa[len(sayfa) - 1]
+                baslangicsayisi = sayfanum
             except:
                 print("sayfa bulunamadı dayı deniliyor")
                 sayfanum = "Dayı"
             yükleme.set(80)
             print(text)
-            tts = gTTS(text = text, lang = "tr")
-            tts.save('sesler/sayfa{s}.mp3'.format(s = sayfanum))
+            try:
+                tts = gTTS(text = text, lang = "tr")
+                tts.save('sesler/sayfa{s}.mp3'.format(s = sayfanum))
+            except:
+                messagebox.showerror("Ses Hatası","Çektiğiniz fotoğrafta metin olduğundan emin olun.")
             yükleme.set(90)
             btime1,btime2 = time.localtime().tm_min , time.localtime().tm_sec
             if ctime1 == btime1:
@@ -187,6 +207,7 @@ root.geometry("1200x600")
 
 root.bind('<Return>',girdial)
 print(v)
+running = threading.Event()
 
 
 v = StringVar(root, value=ipadresi)
@@ -247,23 +268,28 @@ def ses_geç():
 def sayaç(t):
     global isplaying
     global baslangicindex
+    global running
     simdikizaman = 0
-    while simdikizaman <t and mixer.music.get_busy():
-        if not isplaying:
-            continue
-        else:
-            dakika,saniye = divmod(simdikizaman,60)
-            dakika,saniye= round(dakika),round(saniye)
-            süre = "{:02d}:{:02d}".format(dakika,saniye)
-            kalansüre["text"] = "Geçen süre =>" + süre
-            print(mixer.music.get_pos()/1000)
-            time.sleep(1)
-            simdikizaman +=1 
+    while running.is_set():
+        while simdikizaman <t and mixer.music.get_busy():
+            if not isplaying:
+                continue
+            else:
+                dakika,saniye = divmod(simdikizaman,60)
+                dakika,saniye= round(dakika),round(saniye)
+                süre = "{:02d}:{:02d}".format(dakika,saniye)
+                kalansüre["text"] = "Geçen süre =>" + süre
+                print(mixer.music.get_pos()/1000)
+                time.sleep(1)
+                simdikizaman +=1
+    simdikizaman = 0
+    
 def detayları_yaz():
     global saymadöngüsü
     global uzunluk
     global sesdosya
     global oynatılacak_ses
+    global running
     altyazı["text"] = os.path.basename(oynatılacak_ses) + "Oynatılıyor"
     dosyadetayı["text"] = os.path.basename(oynatılacak_ses) + " Oynatılıyor"
     if oynatılacak_ses.endswith(".mp3"):
@@ -278,50 +304,14 @@ def detayları_yaz():
     zaman = '{:02d}:{:02d}'.format(dakika,saniye)
     fullsüre["text"] = "Full süre => " + zaman
     # yaklaşık 3 saniye gecikme var. Çözülmeli
-    #time.sleep(3)
+    #time.sleep(3)         
+    running.clear()
+    running.set()
     saymadöngüsü = Thread(target=sayaç,args=(uzunluk,))
     saymadöngüsü.start()
 def kapat():
     stop_button()
     root.destroy()
-"""
-def klavye():
-    while True:
-        if keyboard.is_pressed('space' or "p"):
-            pause_button()
-            print("pause basıldı")
-            #aynı tuşa birden fazla basmayı engelleme
-            time.sleep(0.3)
-        if keyboard.is_pressed('s'):
-            stop_button()
-            print("durdur basıldı")
-            #aynı tuşa birden fazla basmayı engelleme
-            time.sleep(0.3)
-        if keyboard.is_pressed("enter"):
-            play_button()
-            print("play basıldı")
-            #aynı tuşa birden fazla basmayı engelleme
-            time.sleep(0.3)        
-        if keyboard.is_pressed("m"):
-            sound_button()
-            print("susturuldu")
-            #aynı tuşa birden fazla basmayı engelleme
-            time.sleep(0.3)
-        if keyboard.is_pressed("right"):
-            seviye = mixer.music.get_volume()
-            seviye += 0.1
-            mixer.music.set_volume(seviye)
-            scaler.set(seviye*100)
-            #aynı tuşa birden fazla basmayı engelleme
-            time.sleep(0.3)
-        if keyboard.is_pressed("left"):
-            seviye = mixer.music.get_volume()
-            seviye -= 0.1
-            mixer.music.set_volume(seviye)
-            scaler.set(seviye*100)
-            #aynı tuşa birden fazla basmayı engelleme
-            time.sleep(0.3)
-"""
 def play_button():
     global isplaying
     global secili_ses
@@ -339,9 +329,8 @@ def play_button():
         isplaying = True
     else:
         mixer.music.stop()
-        if saymadöngüsü.isAlive():
-            saymadöngüsü = Thread(target=sayaç,args=(1,))
-            saymadöngüsü.start()
+        saymadöngüsü = Thread(target=sayaç,args=(1,))
+        saymadöngüsü.start()
         secili_ses = seslisteyazısı.curselection()
         secili_ses = int(secili_ses[0])
         print(secili_ses)
@@ -368,16 +357,19 @@ def stop_button():
 def sound_button():
     global ismuted
     global eskises
+    global soundbutton
     if not ismuted:
         eskises = mixer.music.get_volume()
         print(eskises)
         mixer.music.set_volume(0)
         scaler.set(0)
         ismuted = True
+        soundbutton.configure(image=ph5)
     else:
         mixer.music.set_volume(eskises)
         scaler.set(eskises * 100)
         ismuted = False
+        soundbutton.configure(image=ph4)
 def yardım_menusu():
     messagebox.showinfo(title="Yardım",message="Kullanım:\n1- Telefonunuza IP Webcam adlı uygulamayı kurun\n2- Bilgisayar ile aynı bağlantıda olduğunuza emin olduktan sonra kamerayı açın ve IP adresinizi öğrenin\n3- Telefonunuzu kitabın bir sayfasına yerleştirin. (Önemli, çünkü kodun hızlı çalışması için direk başlatıyorum. Bu problemin üzerinde çalışıyorum\n4- Kodu çalıştırıp IP adresinizi girin.\n5- Belli bir süre sonra .mp3 uzantılı dosya belirecektir, tıklayıp oynatma tuşuna basın. (Bunun da üzerinde çalışıyorum.)\n6- Bu işlemlerden sonra kod kendisi foto çekip kendisi ses dosyaları arasında geçiş sağlayacaktır.\n7- Şu anlık sayfaları kendiniz çevirmeli ve telefonu kendiniz oynatmalısınız. Bu sıkıntı arkadaşlarım arduino kodunu yazınca düzelecektir.")
 def hakkımızda():
@@ -405,15 +397,15 @@ def listeye_ekle(dosya):
     
     
 #fotoları çek
-im = Image.open("simgeler/play.png")
+im = Image.open("simgeler/oynat.png")
 ph1 = ImageTk.PhotoImage(im)
 im = Image.open("simgeler/pause.png")
 ph2 = ImageTk.PhotoImage(im)
-im = Image.open("simgeler/stop.png")
+im = Image.open("simgeler/durdur.png")
 ph3 = ImageTk.PhotoImage(im)
-im = Image.open("simgeler/speakerplaying.png")
+im = Image.open("simgeler/sesli.png")
 ph4 = ImageTk.PhotoImage(im)
-im = Image.open("simgeler/speakermuted.png")
+im = Image.open("simgeler/sessiz.png")
 ph5 = ImageTk.PhotoImage(im)
 im = Image.open("simgeler/buton.png")
 butonresmi = ImageTk.PhotoImage(im)
@@ -499,7 +491,7 @@ sürebelirteci.set(0)
 altyazı = Label(root,text="Kitap Okuyan Robot                                                                                                                                                       Tulpar Ekibi",anchor=SW,relief=SUNKEN)
 
 
-dosyadetayı = Label(oynatmakısmı,text="Ses bekleniyor. Butonların çıkması için IP girin")
+dosyadetayı = Label(oynatmakısmı,text="Ses bekleniyor. Ses oynaması için listeden seçip oynatma tuşuna basın.")
 
 fullsüre = Label(oynatmakısmı,text="Full süre => --:--")
 
@@ -556,6 +548,7 @@ def anadöngüler():
     listekontrolü.start()
 
 root.protocol("WM_WINDOW_DELETE",kapat)
+root.protocol("WM_WINDOW_DELETE",quit)
 root.mainloop()
 
 
