@@ -1,5 +1,5 @@
 # kitap_okuyan_robot
-Yarını inşa et yarışmasına tasarladığım kodun aşırı düşük performanslı ancak GUI'lı versiyonu
+Yarını inşa et yarışmasına tasarladığım kodun aşırı düşük performanslı ancak GUI versiyonu
 
 Kullanım:
   1- Telefonunuza IP Webcam adlı uygulamayı kurun
